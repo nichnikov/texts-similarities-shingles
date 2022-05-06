@@ -1,0 +1,11 @@
+flask
+Werkzeug==0.16.1
+flask_restplus
+pandas
+python-dotenv
+openpyxl
+requests
+flask_cors
+xlrd
+python-dotenv
+markupsafe==2.0.1

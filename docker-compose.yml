@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  dpl_s:
+    image: duplisearcher-interfaces-shingles
+    ports:
+      - "6001:6001"
+  dpl_s_inf:
+    image: duplisearcher-searcher-shingles
+    ports:
+      - "6000:6000"

@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from flask import Flask, request
 from werkzeug.datastructures import FileStorage
 from flask_restplus import Api, Resource, fields
-from utils import remote_clustering, response_func
+from utils import remote_duplisearcher, response_func
 from waitress import serve
 
 load_dotenv(".env")
@@ -34,24 +34,24 @@ CORS(app, resources={r"/api/*": {"enabled": "true",
                                  ]
                                  }}, supports_credentials=True)
 
-name_space = api.namespace('api', 'На вход поступает JSON, возвращает *.xlsx')
+name_space = api.namespace('api', 'three interfaces *.json, *.csv, *.xlsx')
 
 input_data = name_space.model("Insert JSON",
                               {"texts": fields.List(fields.String(description="Insert texts")),
                                "scores_list": fields.List(fields.Float(description="Distance", required=True))}, )
 
 
-CLUSTERING_URL = os.environ.get("CLUSTERING_URL")
-if CLUSTERING_URL is None: raise Exception('Env var CLUSTERING_URL not defined')
-
+# CLUSTERING_URL = os.environ.get("CLUSTERING_URL")
+# if CLUSTERING_URL is None: raise Exception('Env var CLUSTERING_URL not defined')
+CLUSTERING_URL = "http://0.0.0.0:7001/api/"
 
 @name_space.route('/json_excel')
-class ClusteringJsonExcel(Resource):
+class DuplisearcherJsonExcel(Resource):
     @name_space.expect(input_data)
     def post(self):
         """POST method on input json file with texts and score, output clustering texts as xlsx file."""
         json_data = request.json
-        clustering_texts_df = remote_clustering(json_data, CLUSTERING_URL, upload_type="json")
+        clustering_texts_df = remote_duplisearcher(json_data, CLUSTERING_URL, upload_type="json")
         return response_func(clustering_texts_df)
 
 
@@ -59,10 +59,14 @@ class ClusteringJsonExcel(Resource):
 def api_configurator(name_space):
     """"""
     upload_parser = name_space.parser()
-    upload_parser.add_argument("file", type=FileStorage, location='files', required=True,
+    upload_parser.add_argument("file1", type=FileStorage, location='files', required=True,
                                help="тексты должны быть в первом столбце")
-    upload_parser.add_argument("scores_list", type=float, action='append', required=True,
-                               help="кластеризация для каждого значения скора")
+    upload_parser.add_argument("file2", type=FileStorage, location='files', required=True,
+                               help="тексты должны быть в первом столбце")
+    upload_parser.add_argument("shingle_len", type=float, required=True,
+                               help="длина шинглов")
+    upload_parser.add_argument("score", type=float, required=True,
+                               help="значение скора")
     return upload_parser
 
 
@@ -74,11 +78,11 @@ csv_upload_parser = api_configurator(csv_name_space)
 
 @csv_name_space.route('/csv_csv')
 @csv_name_space.expect(csv_upload_parser)
-class ClusteringCsvCsv(Resource):
+class DuplisearcherCsvCsv(Resource):
     def post(self):
         """POST method on input csv file with texts and score, output clustering texts  as csv file."""
         args = csv_upload_parser.parse_args()
-        clustering_texts_df = remote_clustering(args, CLUSTERING_URL, upload_type="csv")
+        clustering_texts_df = remote_duplisearcher(args, CLUSTERING_URL, upload_type="csv")
         return response_func(clustering_texts_df, response_type="csv")
 
 
@@ -91,14 +95,14 @@ excel_upload_parser = api_configurator(excel_name_space)
 
 @excel_name_space.route('/excel_excel')
 @excel_name_space.expect(excel_upload_parser)
-class ClusteringEcxelExcel(Resource):
+class DuplisearcherEcxelExcel(Resource):
     def post(self):
         """POST method on input xlsx file with texts and score, output clustering texts  as xlsx file."""
         args = excel_upload_parser.parse_args()
-        clustering_texts_df = remote_clustering(args, CLUSTERING_URL)
+        clustering_texts_df = remote_duplisearcher(args, CLUSTERING_URL)
         return response_func(clustering_texts_df)
 
 
 if __name__ == "__main__":
-    serve(app, host="0.0.0.0", port=8080)
-    # app.run(host='0.0.0.0', port=4500)
+    #serve(app, host="0.0.0.0", port=7000)
+    app.run(host='0.0.0.0', port=7000)

@@ -1,59 +1,46 @@
 import io
-import ast
 import requests
 import pandas as pd
 from flask import Response
-from flask_restplus import inputs
-from werkzeug.datastructures import Headers, FileStorage
+from werkzeug.datastructures import Headers
+from werkzeug.datastructures import FileStorage
 
-
-# описание метода add_argument:
+"""
 def api_configurator(name_space):
     """"""
     upload_parser = name_space.parser()
-    upload_parser.add_argument("searched_texts", type=FileStorage, location='files', required=True,
-                               help="искомые тексты, обязательные поля: id, texts")
-    upload_parser.add_argument("texts_search_in", type=FileStorage, location='files', required=True,
-                               help="тексты в которых искать, обязательные поля: id, texts")
-    upload_parser.add_argument("only_different_groups", type=inputs.boolean, default=True, required=True,
-                               help="True: возвращает похожие с разными id, False: возвращает похожие с любыми id")
-    upload_parser.add_argument("score", type=float, required=True,
-                               help="степень похожести")
-    return upload_parser
+    upload_parser.add_argument("file", type=FileStorage, location='files', required=True)
+    upload_parser.add_argument("score", type=float, required=True)
+    return upload_parser"""
 
 
-def remote_duplicates_search(args, clustering_url, upload_type="excel"):
+def remote_duplisearcher(args, sending_url, upload_type="excel"):
     """"""
     if upload_type == "json":
         json_data = args
     else:
         if upload_type == "excel":
-            searched_texts_df = pd.read_excel(args['searched_texts'])
-            texts_search_in_df = pd.read_excel(args['texts_search_in'])
+            df1 = pd.read_excel(args['file1'], header=None)
+            df2 = pd.read_excel(args['file2'], header=None)
+
         else:
             """The function expects csv type of upload data"""
-            searched_texts_df = pd.read_csv(args['searched_texts'])
-            texts_search_in_df = pd.read_csv(args['texts_search_in'])
+            df1 = pd.read_csv(args['file1'], header=None)
+            df2 = pd.read_csv(args['file2'], header=None)
 
-        json_data = {"searched_texts": [{"text": tx, "id": id} for tx, id in zip(searched_texts_df["texts"],
-                                                                                 searched_texts_df["id"])],
-                     "texts_search_in": [{"text": tx, "id": id} for tx, id in zip(texts_search_in_df["texts"],
-                                                                                  texts_search_in_df["id"])],
-                     "only_different_groups": args['only_different_groups'],
-                     "score": args['score']}
+        json_data = {"Texts1": list(set(df1[0])), "Texts2": list(set(df2[0])), "Score": args['score'],
+                     "Shingle_len": args["shingle_len"]}
 
-    duplicates_search_response = requests.post(clustering_url, json=json_data)
-    duplicates_tuples_dict = duplicates_search_response.json()
-    return pd.DataFrame(ast.literal_eval(duplicates_tuples_dict["duplicates"]), columns=["searched_text", "searched_id",
-                                                                                         "similar_text",
-                                                                                         "similar_text_id", "score"])
+    response = requests.post(sending_url, json=json_data)
+    results = response.json()
+    return pd.DataFrame(results["shingle_duplicates"], columns=["text1", "text2", "jaccard_coeff"])
 
 
 def response_func(clustering_texts_df, response_type="excel"):
     """"""
     headers = Headers()
     if response_type == "excel":
-        headers.add('Content-Disposition', 'attachment', filename="searched_duplicates.xlsx")
+        headers.add('Content-Disposition', 'attachment', filename="clustering_results.xlsx")
         buffer = io.BytesIO()
         clustering_texts_df.to_excel(buffer, index=False, encoding='cp1251'),
         return Response(buffer.getvalue(),
@@ -61,7 +48,7 @@ def response_func(clustering_texts_df, response_type="excel"):
                         headers=headers)
 
     else:
-        headers.add('Content-Disposition', 'attachment', filename="searched_duplicates.csv")
+        headers.add('Content-Disposition', 'attachment', filename="clustering_results.csv")
         return Response(clustering_texts_df.to_csv(index=False),
                         mimetype="text/csv",
                         headers=headers)

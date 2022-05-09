@@ -1,18 +1,11 @@
 import logging
 from waitress import serve
-from itertools import islice
+from itertools import chain
+from scipy.sparse import hstack
 from flask import Flask, jsonify, request
-from texts_processing import TextsTokenizer
 from flask_restplus import Api, Resource, fields
-
-
-def shingle_func(splited_text: [], shingle: int) -> []:
-    """"""
-    if len(splited_text) <= shingle:
-        return ["".join(splited_text)]
-    else:
-        shingles_list = [list(islice(splited_text, i, i + shingle)) for i in range(len(splited_text))]
-        return ["".join(l) for l in shingles_list if len(l) == shingle]
+from texts_processing import TextsTokenizer, QueriesVectors
+from utils import pairwise_sparse_jaccard_distance, shingle_split
 
 
 logger = logging.getLogger("app_duplisearcher")
@@ -26,8 +19,9 @@ name_space = api.namespace('api', 'На вход поступает JSON, воз
 
 input_data = name_space.model("Input JSONs",
                               {"Shingle_len": fields.Integer(required=True, help="Длина шингла"),
-                               "Text_1": fields.String(required=True, help="Текст для сравнения 1"),
-                               "Text_2": fields.String(required=True, help="Текст для сравнения 2")})
+                               "Texts1": fields.List(fields.String(required=True, help="Тексты для сравнения 1")),
+                               "Texts2": fields.List(fields.String(required=True, help="Тексты для сравнения 1")),
+                               "Score": fields.Float(required=True, help="Степень похожести")})
 
 tokenizer = TextsTokenizer()
 
@@ -39,23 +33,33 @@ class Shingles(Resource):
     @name_space.expect(input_data)
     def post(self):
         json_data = request.json
-        tx1 = json_data["Text_1"]
-        tx2 = json_data["Text_2"]
+        tx1 = json_data["Texts1"]
+        tx2 = json_data["Texts2"]
         shingles_len = json_data["Shingle_len"]
+        score = json_data["Score"]
 
-        lm_tx1 = tokenizer([tx1])[0]
-        lm_tx2 = tokenizer([tx2])[0]
+        lm_tx1 = tokenizer(tx1)
+        lm_tx2 = tokenizer(tx2)
 
-        t1_shingles = set(shingle_func(lm_tx1, shingles_len))
-        t2_shingles = set(shingle_func(lm_tx2, shingles_len))
-        intersection = t1_shingles & t2_shingles
-        union = t1_shingles.union(t2_shingles)
+        t1_shingles = shingle_split(lm_tx1, shingles_len)
+        t2_shingles = shingle_split(lm_tx2, shingles_len)
+        tokens_quantity = len(set([x for x in chain(*t1_shingles)] + [y for y in chain(*t2_shingles)]))
 
-        return jsonify({"text1_in_text2": len(intersection) / len(t1_shingles),
-                        "text2_in_text1": len(intersection) / len(t2_shingles),
-                        "jaccard": len(intersection) / len(union)})
+        vectorizer = QueriesVectors(tokens_quantity)
+        t1_vectors = vectorizer(t1_shingles)
+        t2_vectors = vectorizer(t2_shingles)
+
+        matrix1 = hstack(t1_vectors).T
+        matrix2 = hstack(t2_vectors).T
+
+        jaccard_matrix = 1 - pairwise_sparse_jaccard_distance(matrix1, matrix2)
+
+        indexes = (jaccard_matrix > score).nonzero()
+        search_results = [(tx1[i], tx2[j], jaccard_matrix[i][j]) for i, j in zip(indexes[0], indexes[1])]
+
+        return jsonify({"shingle_duplicates": search_results})
 
 
 if __name__ == "__main__":
-    serve(app, host="0.0.0.0", port=8080)
-    # app.run(host='0.0.0.0', port=8080)
+    # serve(app, host="0.0.0.0", port=7001)
+    app.run(host='0.0.0.0', port=7001)

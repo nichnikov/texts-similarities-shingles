@@ -41,9 +41,9 @@ input_data = name_space.model("Insert JSON",
                                "scores_list": fields.List(fields.Float(description="Distance", required=True))}, )
 
 
-# CLUSTERING_URL = os.environ.get("CLUSTERING_URL")
-# if CLUSTERING_URL is None: raise Exception('Env var CLUSTERING_URL not defined')
-CLUSTERING_URL = "http://0.0.0.0:7001/api/"
+CLUSTERING_URL = os.environ.get("DUPLISEARCHER_URL")
+if CLUSTERING_URL is None: raise Exception('Env var DUPLISEARCHER_URL not defined')
+# CLUSTERING_URL = "http://0.0.0.0:7001/api/"
 
 @name_space.route('/json_excel')
 class DuplisearcherJsonExcel(Resource):
@@ -104,5 +104,5 @@ class DuplisearcherEcxelExcel(Resource):
 
 
 if __name__ == "__main__":
-    #serve(app, host="0.0.0.0", port=7000)
-    app.run(host='0.0.0.0', port=7000)
+    serve(app, host="0.0.0.0", port=6010)
+    # app.run(host='0.0.0.0', port=6010)

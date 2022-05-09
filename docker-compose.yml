@@ -3,8 +3,8 @@ services:
   dpl_s:
     image: duplisearcher-interfaces-shingles
     ports:
-      - "6001:6001"
+      - "6010:6010"
   dpl_s_inf:
-    image: duplisearcher-searcher-shingles
+    image: duplisearcher-shingles
     ports:
-      - "6000:6000"
+      - "6011:6011"

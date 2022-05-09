@@ -40,9 +40,10 @@ input_data = name_space.model("Insert JSON",
                               {"texts": fields.List(fields.String(description="Insert texts")),
                                "scores_list": fields.List(fields.Float(description="Distance", required=True))}, )
 
+DUPLISEARCHER_URL = os.environ.get("DUPLISEARCHER_URL")
+if DUPLISEARCHER_URL is None: raise Exception('Env var DUPLISEARCHER_URL not defined')
 
-CLUSTERING_URL = os.environ.get("DUPLISEARCHER_URL")
-if CLUSTERING_URL is None: raise Exception('Env var DUPLISEARCHER_URL not defined')
+
 # CLUSTERING_URL = "http://0.0.0.0:7001/api/"
 
 @name_space.route('/json_excel')
@@ -51,11 +52,13 @@ class DuplisearcherJsonExcel(Resource):
     def post(self):
         """POST method on input json file with texts and score, output clustering texts as xlsx file."""
         json_data = request.json
-        clustering_texts_df = remote_duplisearcher(json_data, CLUSTERING_URL, upload_type="json")
+        clustering_texts_df = remote_duplisearcher(json_data, DUPLISEARCHER_URL, upload_type="json")
         return response_func(clustering_texts_df)
 
 
 """================== csv files ==================="""
+
+
 def api_configurator(name_space):
     """"""
     upload_parser = name_space.parser()
@@ -82,7 +85,7 @@ class DuplisearcherCsvCsv(Resource):
     def post(self):
         """POST method on input csv file with texts and score, output clustering texts  as csv file."""
         args = csv_upload_parser.parse_args()
-        clustering_texts_df = remote_duplisearcher(args, CLUSTERING_URL, upload_type="csv")
+        clustering_texts_df = remote_duplisearcher(args, DUPLISEARCHER_URL, upload_type="csv")
         return response_func(clustering_texts_df, response_type="csv")
 
 
@@ -99,7 +102,7 @@ class DuplisearcherEcxelExcel(Resource):
     def post(self):
         """POST method on input xlsx file with texts and score, output clustering texts  as xlsx file."""
         args = excel_upload_parser.parse_args()
-        clustering_texts_df = remote_duplisearcher(args, CLUSTERING_URL)
+        clustering_texts_df = remote_duplisearcher(args, DUPLISEARCHER_URL)
         return response_func(clustering_texts_df)
 
 

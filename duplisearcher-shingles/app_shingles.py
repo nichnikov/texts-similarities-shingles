@@ -8,8 +8,8 @@ from texts_processing import TextsTokenizer, QueriesVectors
 from utils import pairwise_sparse_jaccard_distance, shingle_split
 
 
-logger = logging.getLogger("app_duplisearcher")
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger("app_shingles")
+logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False
@@ -38,24 +38,33 @@ class Shingles(Resource):
         shingles_len = json_data["Shingle_len"]
         score = json_data["Score"]
 
-        lm_tx1 = tokenizer(tx1)
-        lm_tx2 = tokenizer(tx2)
+        if tx1 and tx2:
+            lm_tx1 = tokenizer([str(x) for x in tx1])
+            lm_tx2 = tokenizer([str(x) for x in tx2])
 
-        t1_shingles = shingle_split(lm_tx1, shingles_len)
-        t2_shingles = shingle_split(lm_tx2, shingles_len)
-        tokens_quantity = len(set([x for x in chain(*t1_shingles)] + [y for y in chain(*t2_shingles)]))
+            t1_shingles = shingle_split(lm_tx1, shingles_len)
+            t2_shingles = shingle_split(lm_tx2, shingles_len)
+            tokens_quantity = len(set([x for x in chain(*t1_shingles)] + [y for y in chain(*t2_shingles)]))
 
-        vectorizer = QueriesVectors(tokens_quantity)
-        t1_vectors = vectorizer(t1_shingles)
-        t2_vectors = vectorizer(t2_shingles)
+            vectorizer = QueriesVectors(tokens_quantity)
+            t1_vectors = vectorizer(t1_shingles)
+            t2_vectors = vectorizer(t2_shingles)
 
-        matrix1 = hstack(t1_vectors).T
-        matrix2 = hstack(t2_vectors).T
+            matrix1 = hstack(t1_vectors).T
+            matrix2 = hstack(t2_vectors).T
 
-        jaccard_matrix = 1 - pairwise_sparse_jaccard_distance(matrix1, matrix2)
+            jaccard_distance = pairwise_sparse_jaccard_distance(matrix1, matrix2)
+            if jaccard_distance:
+                jaccard_matrix = 1 - jaccard_distance
 
-        indexes = (jaccard_matrix > score).nonzero()
-        search_results = [(tx1[i], tx2[j], jaccard_matrix[i][j]) for i, j in zip(indexes[0], indexes[1])]
+                indexes = (jaccard_matrix > score).nonzero()
+                search_results = [(tx1[i], tx2[j], jaccard_matrix[i][j]) for i, j in zip(indexes[0], indexes[1])]
+            else:
+                logger.warning("No search_results")
+                search_results = []
+        else:
+            logger.warning("No input texts")
+            search_results = []
 
         return jsonify({"shingle_duplicates": search_results})
 

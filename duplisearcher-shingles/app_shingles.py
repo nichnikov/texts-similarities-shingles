@@ -56,6 +56,14 @@ class Shingles(Resource):
             # jaccard_distance = pairwise_sparse_jaccard_distance(matrix1, matrix2)
             jaccard_matrix = 1 - pairwise_sparse_jaccard_distance(matrix1, matrix2)
 
+            print("tx1:", tx1[:10])
+            print("\n\ntx2:", tx2[:10])
+            print("\n\nlm_tx1:", lm_tx1[:10])
+            print("\n\nlm_tx2:", lm_tx2[:10])
+            print(len(tx1))
+            print(len(lm_tx1))
+            print(len(lm_tx2))
+            print(jaccard_matrix.shape)
             indexes = (jaccard_matrix > score).nonzero()
             search_results = [(tx1[i], tx2[j], jaccard_matrix[i][j]) for i, j in zip(indexes[0], indexes[1])]
         else:
@@ -66,5 +74,5 @@ class Shingles(Resource):
 
 
 if __name__ == "__main__":
-    serve(app, host="0.0.0.0", port=6011)
-    # app.run(host='0.0.0.0', port=6011)
+    # serve(app, host="0.0.0.0", port=6011)
+    app.run(host='0.0.0.0', port=6011)

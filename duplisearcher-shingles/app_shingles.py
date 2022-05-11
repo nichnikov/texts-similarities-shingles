@@ -74,5 +74,5 @@ class Shingles(Resource):
 
 
 if __name__ == "__main__":
-    # serve(app, host="0.0.0.0", port=6011)
-    app.run(host='0.0.0.0', port=6011)
+    serve(app, host="0.0.0.0", port=6011)
+    # app.run(host='0.0.0.0', port=6011)

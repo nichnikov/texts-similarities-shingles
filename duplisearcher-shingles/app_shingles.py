@@ -53,15 +53,11 @@ class Shingles(Resource):
             matrix1 = hstack(t1_vectors).T
             matrix2 = hstack(t2_vectors).T
 
-            jaccard_distance = pairwise_sparse_jaccard_distance(matrix1, matrix2)
-            if jaccard_distance:
-                jaccard_matrix = 1 - jaccard_distance
+            # jaccard_distance = pairwise_sparse_jaccard_distance(matrix1, matrix2)
+            jaccard_matrix = 1 - pairwise_sparse_jaccard_distance(matrix1, matrix2)
 
-                indexes = (jaccard_matrix > score).nonzero()
-                search_results = [(tx1[i], tx2[j], jaccard_matrix[i][j]) for i, j in zip(indexes[0], indexes[1])]
-            else:
-                logger.warning("No search_results")
-                search_results = []
+            indexes = (jaccard_matrix > score).nonzero()
+            search_results = [(tx1[i], tx2[j], jaccard_matrix[i][j]) for i, j in zip(indexes[0], indexes[1])]
         else:
             logger.warning("No input texts")
             search_results = []
